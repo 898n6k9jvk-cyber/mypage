@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>발리 가족여행</title>
+<style>
+  :root{
+    --bg:#F5F5F7;
+    --card:#FFFFFF;
+    --text:#1D1D1F;
+    --text2:#6E6E73;
+    --accent:#0071E3;
+    --accent-soft:#E8F2FE;
+    --border:rgba(0,0,0,0.08);
+    --shadow:0 2px 16px rgba(0,0,0,0.07);
+    --radius:18px;
+    --c-stay:#0071E3;
+    --c-shop:#5E5CE6;
+    --c-spot:#30B94D;
+    --c-food:#FF9500;
+    --c-cafe:#A2845E;
+    --c-mart:#32ADE6;
+    --c-pharm:#FF3B30;
+    --c-spa:#BF5AF2;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:88px;
+  }
+  a{ color:inherit; }
+
+  /* ---------- HEADER ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    background:rgba(245,245,247,0.88);
+    backdrop-filter:saturate(180%) blur(14px);
+    padding:18px 20px 12px;
+    border-bottom:1px solid var(--border);
+  }
+  .topbar h1{
+    margin:0 0 4px; font-size:26px; font-weight:800; letter-spacing:-0.02em;
+  }
+  .topbar .sub{ margin:0; font-size:15px; color:var(--text2); font-weight:500; }
+  .stat-row{ display:flex; gap:8px; margin-top:14px; }
+  .stat{
+    flex:1; background:var(--card); border-radius:14px; padding:10px 12px;
+    border:1px solid var(--border);
+  }
+  .stat .l{ font-size:11.5px; color:var(--text2); font-weight:600; }
+  .stat .v{ font-size:15px; font-weight:700; margin-top:2px; }
+
+  .content{ padding:18px 18px 8px; max-width:600px; margin:0 auto; }
+  .section-title{
+    font-size:20px; font-weight:800; margin:6px 0 14px; letter-spacing:-0.01em;
+  }
+  .section-title .tag{
+    font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-soft);
+    padding:4px 10px; border-radius:20px; margin-left:8px; vertical-align:middle;
+  }
+
+  /* ---------- MAP ---------- */
+  .map-card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--border); overflow:hidden; margin-bottom:16px;
+  }
+  .map-wrap{ position:relative; width:100%; background:#dce8ee; }
+  .map-wrap img{ width:100%; display:block; }
+  .pin{
+    position:absolute; transform:translate(-50%,-100%);
+    display:flex; flex-direction:column; align-items:center;
+    cursor:pointer; user-select:none;
+  }
+  .pin .dot{
+    width:18px; height:18px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    border:2.5px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  }
+  .pin .lbl{
+    margin-top:2px; font-size:11px; font-weight:700; color:#1D1D1F; background:#fff;
+    padding:2px 6px; border-radius:6px; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,0.15);
+  }
+  .map-attrib{ font-size:10.5px; color:var(--text2); text-align:right; padding:6px 10px; }
+  .legend{ display:flex; flex-wrap:wrap; gap:8px 14px; padding:12px 16px 16px; font-size:12.5px; color:var(--text2); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  /* ---------- MODAL (place detail) ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:100;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .overlay.show{ display:flex; }
+  .sheet{
+    background:var(--card); width:100%; max-width:600px; border-radius:22px 22px 0 0;
+    padding:22px 22px 28px; box-shadow:0 -6px 30px rgba(0,0,0,0.2);
+    animation:slideUp .22s ease;
+  }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:0;} to{ transform:none; opacity:1;} }
+  .sheet-handle{ width:36px; height:4px; background:#D1D1D6; border-radius:3px; margin:0 auto 16px; }
+  .sheet .cat-badge{
+    display:inline-block; font-size:12px; font-weight:700; color:#fff; padding:4px 10px; border-radius:20px; margin-bottom:10px;
+  }
+  .sheet h2{ margin:0 0 6px; font-size:21px; font-weight:800; }
+  .sheet .drive{ font-size:13.5px; color:var(--text2); margin-bottom:10px; font-weight:600; }
+  .sheet p{ margin:0 0 16px; font-size:15px; color:#3a3a3c; line-height:1.6; }
+  .sheet .btn-row{ display:flex; gap:10px; }
+  .sheet a.btn{
+    flex:1; text-align:center; background:var(--accent); color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px; border-radius:12px; text-decoration:none;
+  }
+  .sheet button.close{
+    flex:0 0 auto; background:#F2F2F7; color:var(--text); font-weight:700; font-size:14.5px;
+    padding:12px 18px; border-radius:12px; border:none;
+  }
+
+  /* ---------- SCHEDULE ---------- */
+  .day-nav{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 16px; scrollbar-width:none; }
+  .day-nav::-webkit-scrollbar{ display:none; }
+  .day-pill{
+    flex-shrink:0; padding:9px 16px; border-radius:20px; font-size:14px; font-weight:700;
+    background:var(--card); border:1px solid var(--border); color:var(--text2); cursor:pointer;
+    font-family:inherit;
+  }
+  .day-pill.active{ background:var(--text); color:#fff; border-color:var(--text); }
+
+  .day-panel{ display:none; }
+  .day-panel.active{ display:block; animation:fade .2s ease; }
+  @keyframes fade{ from{opacity:0;} to{opacity:1;} }
+
+  .day-head{ margin-bottom:14px; }
+  .day-head .date{ font-size:12.5px; font-weight:700; color:var(--accent); letter-spacing:.03em; }
+  .day-head h3{ font-size:21px; margin:4px 0 0; font-weight:800; }
+  .split-badge{
+    display:inline-block; margin-left:8px; font-size:11px; font-weight:700; background:#FFF1D6; color:#9A6400;
+    padding:3px 9px; border-radius:10px; vertical-align:middle;
+  }
+
+  .timeline{ position:relative; padding-left:20px; }
+  .timeline::before{
+    content:""; position:absolute; left:5px; top:6px; bottom:6px; width:2px; background:var(--border); border-radius:2px;
+  }
+  .t-item{ position:relative; padding-bottom:16px; }
+  .t-item:last-child{ padding-bottom:0; }
+  .t-item::before{
+    content:""; position:absolute; left:-20px; top:4px; width:10px; height:10px; border-radius:50%;
+    background:var(--accent); border:2.5px solid #fff; box-shadow:0 0 0 1px var(--border);
+  }
+  .t-time{ font-size:12px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px; }
+  .t-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:15px 16px; box-shadow:var(--shadow); }
+  .t-card h4{ margin:0 0 5px; font-size:16px; font-weight:700; }
+  .t-card p{ margin:0; font-size:14.5px; color:#3a3a3c; line-height:1.6; }
+  .meal-row{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .meal-chip{
+    display:flex; align-items:center; gap:8px; background:#FAFAFB; border:1px solid var(--border);
+    border-radius:10px; padding:8px 10px; text-decoration:none; color:var(--text);
+  }
+  .meal-chip .m-tag{
+    font-size:10.5px; font-weight:800; color:#fff; padding:2px 7px; border-radius:8px; flex-shrink:0;
+  }
+  .meal-chip .m-name{ font-size:13.5px; font-weight:700; flex:1; }
+  .meal-chip .m-go{ font-size:12px; color:var(--accent); font-weight:700; flex-shrink:0; }
+
+  .note-box{
+    background:#FFF9E8; border:1px solid #F5E3A3; border-radius:14px; padding:12px 14px;
+    font-size:13px; color:#7a5b00; margin:16px 0 4px; line-height:1.55;
+  }
+
+  /* ---------- BOTTOM NAV ---------- */
+  .bottom-nav{
+    position:fixed; bottom:0; left:0; right:0; z-index:20;
+    background:rgba(255,255,255,0.92); backdrop-filter:saturate(180%) blur(14px);
+    border-top:1px solid var(--border);
+    display:flex; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; padding:6px 4px; cursor:pointer;
+    color:#9a9a9e; font-family:inherit; font-size:11.5px; font-weight:700;
+  }
+  .nav-btn.active{ color:var(--accent); }
+  .nav-btn svg{ width:23px; height:23px; }
+  .tab-pane{ display:none; }
+  .tab-pane.active{ display:block; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>발리 가족여행</h1>
+    <p class="sub">누사두아 힐튼 리조트 · 7.24 – 7.30</p>
+    <div class="stat-row">
+      <div class="stat"><div class="l">기간</div><div class="v">6박 7일</div></div>
+      <div class="stat"><div class="l">숙소</div><div class="v">힐튼 누사두아</div></div>
+      <div class="stat"><div class="l">인원</div><div class="v">총 7명</div></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- MAP TAB -->
+    <div class="tab-pane active" id="pane-map">
+      <div class="section-title">지도 <span class="tag">핀을 눌러보세요</span></div>
+      <div class="map-card">
+        <div class="map-wrap" id="mapWrap">
+          <img id="mapImg" src="https://staticmap.openstreetmap.de/staticmap.php?center=-8.795,115.185&zoom=11&size=640x440&maptype=mapnik" alt="발리 남부 지도">
+        </div>
+        <div class="map-attrib">지도 데이터 © OpenStreetMap contributors</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--c-stay)"></i>숙소</span>
+        <span><i style="background:var(--c-spot)"></i>관광지</span>
+        <span><i style="background:var(--c-food)"></i>식당</span>
+        <span><i style="background:var(--c-cafe)"></i>카페</span>
+        <span><i style="background:var(--c-shop)"></i>쇼핑</span>
+        <span><i style="background:var(--c-mart)"></i>마트</span>
+        <span><i style="background:var(--c-pharm)"></i>약국</span>
+        <span><i style="background:var(--c-spa)"></i>스파</span>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div class="tab-pane" id="pane-schedule">
+      <div class="section-title">일정 <span class="tag">7.24 – 7.30</span></div>
+      <div class="day-nav" id="dayNav"></div>
+      <div id="dayPanels"></div>
+    </div>
+
+  </div>
+
+  <!-- Place detail bottom sheet -->
+  <div class="overlay" id="overlay" onclick="if(event.target===this) closeSheet();">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <span class="cat-badge" id="sheetCat">카테고리</span>
+      <h2 id="sheetName">장소명</h2>
+      <div class="drive" id="sheetDrive">숙소에서 차로 —</div>
+      <p id="sheetDesc">설명</p>
+      <div class="btn-row">
+        <a class="btn" id="sheetLink" href="#" target="_blank">구글맵에서 열기 ↗</a>
+        <button class="close" onclick="closeSheet()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-pane="pane-map" onclick="setTab('pane-map', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-3 8 3 7-3V3l-7 3-8-3-7 3z"/><path d="M8 3v16M16 6v16"/></svg>
+      지도
+    </button>
+    <button class="nav-btn" data-pane="pane-schedule" onclick="setTab('pane-schedule', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      일정
+    </button>
+  </div>
+
+<script>
+  function setTab(id, btn){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // ---------- Locations (real coordinates) ----------
+  const CENTER = {lat:-8.795, lon:115.185};
+  const ZOOM = 11;
+  const MAP_W = 640, MAP_H = 440;
+
+  const catColors = {
+    '숙소':'var(--c-stay)', '쇼핑':'var(--c-shop)', '관광지':'var(--c-spot)',
+    '식당':'var(--c-food)', '카페':'var(--c-cafe)', '마트':'var(--c-mart)',
+    '약국':'var(--c-pharm)', '스파':'var(--c-spa)'
+  };
+
+  const locations = [
+    {id:'resort', name:'힐튼 발리 리조트 (숙소)', lat:-8.7965, lon:115.2255, cat:'숙소',
+      drive:'기준 위치', desc:'우리 숙소. The Shore, Grain 등 리조트 내 레스토랑 다수, Mandara Spa 있음.',
+      link:'https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua'},
+    {id:'collection', name:'발리 컬렉션', lat:-8.7975, lon:115.2280, cat:'쇼핑',
+      drive:'숙소에서 차로 약 10~15분', desc:'소고 백화점(세일 품목 다수), 나이키·리바이스·지오다노, 대형마트, 기념품샵까지 한 번에.',
+      link:'https://www.google.com/maps/search/Bali+Collection+Nusa+Dua'},
+    {id:'kimiafarma', name:'Kimia Farma 약국 (누사두아)', lat:-8.7993, lon:115.2295, cat:'약국',
+      drive:'숙소에서 차로 약 5~10분', desc:'인도네시아 대표 약국 체인. 해열제·소화제 등 상비약, 자외선차단제 구비. 일부 지점 24시간 운영.',
+      link:'https://www.google.com/maps/search/Kimia+Farma+Nusa+Dua'},
+    {id:'pepito', name:'Pepito Market (시리기타)', lat:-8.8010, lon:115.2245, cat:'마트',
+      drive:'숙소에서 차로 약 5~10분', desc:'생수·간식·유아용품 사기 좋은 대형 마트. 관광지 이동 전후 들르기 좋아요.',
+      link:'https://www.google.com/maps/search/Pepito+Market+Siligita+Nusa+Dua'},
+    {id:'waterblow', name:'워터블로우', lat:-8.8040, lon:115.2310, cat:'관광지',
+      drive:'숙소에서 차로 약 10분', desc:'파도가 절벽에 부딪혀 솟구치는 명소. 전망대·산책로가 잘 되어 있어 유모차도 안전.',
+      link:'https://www.google.com/maps/search/Water+Blow+Nusa+Dua'},
+    {id:'gwk', name:'GWK 문화공원', lat:-8.8103, lon:115.1672, cat:'관광지',
+      drive:'숙소에서 차로 약 25~30분', desc:'거대한 가루다 위스누 켄카나 동상. 전체 포장도로 + 버기카 셔틀이라 아이·부모님 동반에 편함. 바롱 댄스 공연.',
+      link:'https://www.google.com/maps/search/GWK+Cultural+Park+Bali'},
+    {id:'jimbaran', name:'Menega Cafe (짐바란 해변)', lat:-8.7890, lon:115.1614, cat:'식당',
+      drive:'숙소에서 차로 약 30분', desc:'짐바란 해변 대표 해산물 그릴 레스토랑. 백사장 좌식 테이블, 일몰 맛집. 저녁 예약 권장.',
+      link:'https://www.google.com/maps/search/Menega+Cafe+Jimbaran'},
+    {id:'uluwatu', name:'울루와뚜 사원', lat:-8.8290, lon:115.0850, cat:'관광지',
+      drive:'숙소에서 차로 약 40~50분', desc:'절벽 위 사원, 인도양 전망. 저녁엔 케착댄스 보러 오는 인파로 매우 혼잡, 낮 시간대 방문 추천. 사롱 무료 대여.',
+      link:'https://www.google.com/maps/search/Uluwatu+Temple+Bali'},
+    {id:'oneeighty', name:'oneeighty° (울루와뚜 절벽뷰)', lat:-8.8310, lon:115.0835, cat:'카페',
+      drive:'울루와뚜 사원에서 차로 약 5~10분', desc:'더 에지 호텔의 절벽 뷰 레스토랑·카페. 글래스바텀 풀로 유명. 인기가 많아 사전 예약 권장.',
+      link:'https://www.google.com/maps/search/oneeighty+Uluwatu+Bali'},
+    {id:'sanur', name:'사누르 비치워크', lat:-8.7085, lon:115.2620, cat:'관광지',
+      drive:'숙소에서 차로 약 35~45분', desc:'파도가 잔잔하고 5km 평탄한 해변 산책로. 아이 손잡고 걷기 좋고, 신두비치 쪽은 한적한 편.',
+      link:'https://www.google.com/maps/search/Sanur+Beach+Bali'},
+    {id:'goory', name:'Goory Coffee & Eatery (사누르)', lat:-8.7040, lon:115.2650, cat:'카페',
+      drive:'사누르 해변 인근', desc:'사누르 비치 근처 쾌적하고 세련된 카페. 넓은 좌석에서 여유롭게 시간 보내기 좋음.',
+      link:'https://www.google.com/maps/search/Goory+Coffee+%26+Eatery+Sanur'},
+    {id:'isisspa', name:'Isis Spa (사누르)', lat:-8.7060, lon:115.2600, cat:'스파',
+      drive:'사누르 해변 인근', desc:'가족 단위 방문객에게 인지도 높은 스파. 연령 제한 없이 이용 가능, 다양한 마사지 패키지.',
+      link:'https://www.google.com/maps/search/Isis+Spa+Sanur+Bali'},
+  ];
+
+  // ---------- Web Mercator projection ----------
+  function project(lat, lon, zoom){
+    const scale = 256 * Math.pow(2, zoom);
+    const x = (lon + 180) / 360 * scale;
+    const sinLat = Math.sin(lat * Math.PI/180);
+    const y = (0.5 - Math.log((1+sinLat)/(1-sinLat)) / (4*Math.PI)) * scale;
+    return {x, y};
+  }
+
+  function renderPins(){
+    const wrap = document.getElementById('mapWrap');
+    document.querySelectorAll('.pin').forEach(p=>p.remove());
+    const c = project(CENTER.lat, CENTER.lon, ZOOM);
+    locations.forEach(loc=>{
+      const p = project(loc.lat, loc.lon, ZOOM);
+      const leftPct = (MAP_W/2 + (p.x - c.x)) / MAP_W * 100;
+      const topPct  = (MAP_H/2 + (p.y - c.y)) / MAP_H * 100;
+      const pin = document.createElement('div');
+      pin.className = 'pin';
+      pin.style.left = leftPct + '%';
+      pin.style.top = topPct + '%';
+      pin.innerHTML = `<div class="dot" style="background:${catColors[loc.cat]}"></div><div class="lbl">${loc.name.split(' (')[0]}</div>`;
+      pin.onclick = ()=> openSheet(loc);
+      wrap.appendChild(pin);
+    });
+  }
+  renderPins();
+
+  function openSheet(loc){
+    document.getElementById('sheetCat').textContent = loc.cat;
+    document.getElementById('sheetCat').style.background = catColors[loc.cat];
+    document.getElementById('sheetName').textContent = loc.name;
+    document.getElementById('sheetDrive').textContent = loc.drive;
+    document.getElementById('sheetDesc').textContent = loc.desc;
+    document.getElementById('sheetLink').href = loc.link;
+    document.getElementById('overlay').classList.add('show');
+  }
+  function closeSheet(){ document.getElementById('overlay').classList.remove('show'); }
+
+  // ---------- Day data ----------
+  function meal(label, name, cat, link){
+    return {label, name, cat, link};
+  }
+
+  const days = [
+    {
+      date:"7월 24일 (금)", title:"이동 & 도착 · 리조트 체크인",
+      items:[
+        {time:"오전~오후", h:"인천 출발 → 발리 도착", p:"인천공항에서 덴파사르(DPS)행 항공편, 도착 후 누사두아까지 차량 이동 (약 30~40분)"},
+        {time:"저녁", h:"힐튼 발리 리조트 체크인", p:"장거리 이동 후 첫날은 짐 풀고 리조트 내에서 가볍게 정리.",
+          meals:[meal('저녁','The Shore (리조트 내)','식당','https://www.google.com/maps/search/The+Shore+Hilton+Bali+Resort')]},
+      ]
+    },
+    {
+      date:"7월 25일 (토)", title:"리조트 근방 & 쇼핑",
+      items:[
+        {time:"오전", h:"리조트에서 여유", p:"3개 야외 수영장·정글 키즈클럽 이용, 부모님은 조식 후 해변 산책."},
+        {time:"점심~오후", h:"발리 컬렉션 쇼핑", p:"차로 15분 내외. 소고 백화점 세일 품목, 나이키·리바이스, 대형마트·기념품샵까지 한 번에.",
+          meals:[meal('점심','Lion X (호텔 내 중식당)','식당','https://www.google.com/maps/search/Lion+X+Nusa+Dua+Bali')]},
+        {time:"저녁", h:"리조트 내 디너 & 공연", p:"발리 전통 무용 공연을 곁들인 저녁 (사전 예약 확인 필요)",
+          meals:[meal('저녁','Mr Bob Bar & Grill (누사두아)','식당','https://www.google.com/maps/search/Mr+Bob+Bar+and+Grill+Nusa+Dua')]},
+      ]
+    },
+    {
+      date:"7월 26일 (일)", title:"GWK 문화공원 & 짐바란",
+      items:[
+        {time:"오전", h:"GWK 문화공원", p:"차로 약 25~30분. 전체 포장도로 + 버기카 셔틀이라 유모차·부모님 동반에 편함. 바롱 댄스 공연도 관람 가능."},
+        {time:"오후", h:"리조트 복귀 & 수영장", p:"오전 관광만으로 마무리, 오후엔 리조트로 돌아와 수영장·해변에서 휴식",
+          meals:[meal('점심','리조트 내 Grain','식당','https://www.google.com/maps/search/Grain+Hilton+Bali+Resort')]},
+        {time:"저녁", h:"짐바란 해변 해산물", p:"GWK에서 차로 약 15분 거리. 백사장에 늘어선 해산물 레스토랑에서 노을 보며 저녁.",
+          meals:[meal('저녁','Menega Cafe (짐바란)','식당','https://www.google.com/maps/search/Menega+Cafe+Jimbaran')]},
+      ]
+    },
+    {
+      date:"7월 27일 (월)", title:"다같이 울루와뚜",
+      items:[
+        {time:"오전", h:"리조트에서 여유", p:"오전엔 이동 없이 조식·수영 등으로 컨디션 조절, 늦지 않게 출발 준비"},
+        {time:"점심~오후", h:"울루와뚜 사원", p:"차로 약 40~50분. 저녁엔 케착댄스·일몰 인파로 매우 혼잡해지니 낮 시간대 방문 추천. 절벽 근처는 아이 손 꼭 잡고 이동.",
+          meals:[meal('점심','oneeighty° (절벽뷰, 예약 권장)','카페','https://www.google.com/maps/search/oneeighty+Uluwatu+Bali')]},
+        {time:"오후 늦게", h:"리조트로 복귀", p:"저녁 붐비는 시간 전에 출발해서 복귀",
+          meals:[meal('저녁','The Breeze (리조트 내)','식당','https://www.google.com/maps/search/The+Breeze+Hilton+Bali+Resort')]},
+      ]
+    },
+    {
+      date:"7월 28일 (화)", title:"사누르 · 스노클링 vs 힐링",
+      split:true,
+      items:[
+        {time:"오전 [스노클링 팀]", h:"사누르 선착장 → 누사페니다 스노클링", p:"스피드보트 30~45분, 만타베이 등에서 스노클링. 최소 연령 10세 안팎 제한 많고 일정도 9~10시간 가까이 걸려 6세·3세 조카는 이 팀에서 빼는 걸 추천. 멀미 있는 엄마도 제외."},
+        {time:"오전~오후 [사누르 힐링 팀]", h:"엄마 + 조카 둘(+원하는 가족)", p:"5km 평탄한 해변 산책로라 아이 손잡고 걷기 편함. 엄마는 스파, 아이들은 백사장 모래놀이.",
+          meals:[
+            meal('점심','Goory Coffee & Eatery (사누르)','카페','https://www.google.com/maps/search/Goory+Coffee+%26+Eatery+Sanur'),
+          ]},
+        {time:"오후", h:"전원 합류 후 저녁", p:"스노클링 팀 오후 4~5시경 복귀 예정",
+          meals:[meal('저녁','리조트 내 자유식','식당','https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua')]},
+      ]
+    },
+    {
+      date:"7월 29일 (수)", title:"여유 & 마사지 · 마무리",
+      items:[
+        {time:"오전", h:"리조트 수영장 & 해변", p:"짐 정리 전 마지막 여유. 아이들 키즈클럽, 어른들은 조식 후 비치 체어에서 휴식",
+          meals:[meal('점심','리조트 내 자유식','식당','https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua')]},
+        {time:"오후", h:"마사지 타임", p:"리조트 내 Mandara Spa에서 가족끼리 나란히 마사지 예약 추천"},
+        {time:"저녁", h:"마지막 가족 디너", p:"일주일 여행 마무리하는 저녁 식사, 짐 싸기",
+          meals:[meal('저녁','The Shore (리조트 내)','식당','https://www.google.com/maps/search/The+Shore+Hilton+Bali+Resort')]},
+      ]
+    },
+    {date:"7월 30일 (목)", title:"귀국", items:[
+      {time:"오전~오후", h:"체크아웃 & 공항 이동", p:"덴파사르 공항으로 이동 후 인천행 항공편 탑승"},
+    ]},
+  ];
+
+  const dayNav = document.getElementById('dayNav');
+  const dayPanels = document.getElementById('dayPanels');
+  const mealTagColor = {'식당':'var(--c-food)','카페':'var(--c-cafe)'};
+
+  days.forEach((d, i)=>{
+    const pill = document.createElement('button');
+    pill.className = 'day-pill' + (i===0 ? ' active' : '');
+    pill.textContent = 'Day ' + (i+1);
+    pill.onclick = ()=>{
+      document.querySelectorAll('.day-pill').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+      document.querySelectorAll('.day-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('day-panel-'+i).classList.add('active');
+    };
+    dayNav.appendChild(pill);
+
+    const panel = document.createElement('div');
+    panel.className = 'day-panel' + (i===0 ? ' active' : '');
+    panel.id = 'day-panel-'+i;
+
+    if(d.items){
+      let html = '<div class="timeline">';
+      d.items.forEach(it=>{
+        let mealsHtml = '';
+        if(it.meals && it.meals.length){
+          mealsHtml = '<div class="meal-row">' + it.meals.map(m=>`
+            <a class="meal-chip" href="${m.link}" target="_blank">
+              <span class="m-tag" style="background:${mealTagColor[m.cat]||'var(--c-food)'}">${m.label}</span>
+              <span class="m-name">${m.name}</span>
+              <span class="m-go">지도 ↗</span>
+            </a>`).join('') + '</div>';
+        }
+        html += `
+          <div class="t-item">
+            <div class="t-time">${it.time}</div>
+            <div class="t-card">
+              <h4>${it.h}</h4>
+              <p>${it.p}</p>
+              ${mealsHtml}
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+      const splitBadge = d.split ? '<span class="split-badge">가족이 나뉘는 날</span>' : '';
+      panel.innerHTML = `<div class="day-head"><div class="date">${d.date}</div><h3>${d.title}${splitBadge}</h3></div>${html}`;
+    }
+    dayPanels.appendChild(panel);
+  });
+</script>
+
+</body>
+</html>
