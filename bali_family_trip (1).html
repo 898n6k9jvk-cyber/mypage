@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>발리 가족여행</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#F5F5F7;
+    --card:#FFFFFF;
+    --text:#1D1D1F;
+    --text2:#6E6E73;
+    --accent:#0071E3;
+    --accent-soft:#E8F2FE;
+    --border:rgba(0,0,0,0.08);
+    --shadow:0 2px 16px rgba(0,0,0,0.07);
+    --radius:18px;
+    --c-stay:#0071E3;
+    --c-shop:#5E5CE6;
+    --c-spot:#30B94D;
+    --c-food:#FF9500;
+    --c-cafe:#A2845E;
+    --c-mart:#32ADE6;
+    --c-pharm:#FF3B30;
+    --c-spa:#BF5AF2;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:88px;
+  }
+  a{ color:inherit; }
+
+  /* ---------- HEADER ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    background:rgba(245,245,247,0.88);
+    backdrop-filter:saturate(180%) blur(14px);
+    padding:18px 20px 12px;
+    border-bottom:1px solid var(--border);
+  }
+  .topbar h1{
+    margin:0 0 4px; font-size:26px; font-weight:800; letter-spacing:-0.02em;
+  }
+  .topbar .sub{ margin:0; font-size:15px; color:var(--text2); font-weight:500; }
+  .stat-row{ display:flex; gap:8px; margin-top:14px; }
+  .stat{
+    flex:1; background:var(--card); border-radius:14px; padding:10px 12px;
+    border:1px solid var(--border);
+  }
+  .stat .l{ font-size:11.5px; color:var(--text2); font-weight:600; }
+  .stat .v{ font-size:15px; font-weight:700; margin-top:2px; }
+
+  .content{ padding:18px 18px 8px; max-width:600px; margin:0 auto; }
+  .section-title{
+    font-size:20px; font-weight:800; margin:6px 0 14px; letter-spacing:-0.01em;
+  }
+  .section-title .tag{
+    font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-soft);
+    padding:4px 10px; border-radius:20px; margin-left:8px; vertical-align:middle;
+  }
+
+  /* ---------- MAP ---------- */
+  .map-card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--border); overflow:hidden; margin-bottom:16px;
+  }
+  .leaflet-popup-content-wrapper{ border-radius:14px; }
+  .pin{
+    position:absolute; transform:translate(-50%,-100%);
+    display:flex; flex-direction:column; align-items:center;
+    cursor:pointer; user-select:none;
+  }
+  .pin .dot{
+    width:18px; height:18px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    border:2.5px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  }
+  .pin .lbl{
+    margin-top:2px; font-size:11px; font-weight:700; color:#1D1D1F; background:#fff;
+    padding:2px 6px; border-radius:6px; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,0.15);
+  }
+  .map-attrib{ font-size:10.5px; color:var(--text2); text-align:right; padding:6px 10px; }
+  .legend{ display:flex; flex-wrap:wrap; gap:8px 14px; padding:12px 16px 16px; font-size:12.5px; color:var(--text2); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  /* ---------- MODAL (place detail) ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:3000;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .overlay.show{ display:flex; }
+  .sheet{
+    background:var(--card); width:100%; max-width:600px; border-radius:22px 22px 0 0;
+    padding:22px 22px 28px; box-shadow:0 -6px 30px rgba(0,0,0,0.2);
+    animation:slideUp .22s ease;
+  }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:0;} to{ transform:none; opacity:1;} }
+  .sheet-handle{ width:36px; height:4px; background:#D1D1D6; border-radius:3px; margin:0 auto 16px; }
+  .sheet .cat-badge{
+    display:inline-block; font-size:12px; font-weight:700; color:#fff; padding:4px 10px; border-radius:20px; margin-bottom:10px;
+  }
+  .sheet h2{ margin:0 0 6px; font-size:21px; font-weight:800; }
+  .sheet .drive{ font-size:13.5px; color:var(--text2); margin-bottom:10px; font-weight:600; }
+  .sheet p{ margin:0 0 16px; font-size:15px; color:#3a3a3c; line-height:1.6; }
+  .sheet .btn-row{ display:flex; gap:10px; }
+  .sheet a.btn{
+    flex:1; text-align:center; background:var(--accent); color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px; border-radius:12px; text-decoration:none;
+  }
+  .sheet button.close{
+    flex:0 0 auto; background:#F2F2F7; color:var(--text); font-weight:700; font-size:14.5px;
+    padding:12px 18px; border-radius:12px; border:none;
+  }
+
+  /* ---------- SCHEDULE ---------- */
+  .day-nav{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 16px; scrollbar-width:none; }
+  .day-nav::-webkit-scrollbar{ display:none; }
+  .day-pill, .food-pill{
+    flex-shrink:0; padding:9px 16px; border-radius:20px; font-size:14px; font-weight:700;
+    background:var(--card); border:1px solid var(--border); color:var(--text2); cursor:pointer;
+    font-family:inherit;
+  }
+  .day-pill.active, .food-pill.active{ background:var(--text); color:#fff; border-color:var(--text); }
+
+  .day-panel{ display:none; }
+  .day-panel.active{ display:block; animation:fade .2s ease; }
+  .food-panel{ display:none; }
+  .food-panel.active{ display:block; animation:fade .2s ease; }
+  @keyframes fade{ from{opacity:0;} to{opacity:1;} }
+
+  .day-head{ margin-bottom:14px; }
+  .day-head .date{ font-size:12.5px; font-weight:700; color:var(--accent); letter-spacing:.03em; }
+  .day-head h3{ font-size:21px; margin:4px 0 0; font-weight:800; }
+  .split-badge{
+    display:inline-block; margin-left:8px; font-size:11px; font-weight:700; background:#FFF1D6; color:#9A6400;
+    padding:3px 9px; border-radius:10px; vertical-align:middle;
+  }
+
+  .timeline{ position:relative; padding-left:20px; }
+  .timeline::before{
+    content:""; position:absolute; left:5px; top:6px; bottom:6px; width:2px; background:var(--border); border-radius:2px;
+  }
+  .t-item{ position:relative; padding-bottom:16px; }
+  .t-item:last-child{ padding-bottom:0; }
+  .t-item::before{
+    content:""; position:absolute; left:-20px; top:4px; width:10px; height:10px; border-radius:50%;
+    background:var(--accent); border:2.5px solid #fff; box-shadow:0 0 0 1px var(--border);
+  }
+  .t-time{ font-size:12px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px; }
+  .t-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:15px 16px; box-shadow:var(--shadow); }
+  .t-card h4{ margin:0 0 5px; font-size:16px; font-weight:700; }
+  .t-card p{ margin:0; font-size:14.5px; color:#3a3a3c; line-height:1.6; }
+  .meal-row{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .meal-chip{
+    display:flex; align-items:center; gap:8px; background:#FAFAFB; border:1px solid var(--border);
+    border-radius:10px; padding:8px 10px; text-decoration:none; color:var(--text);
+  }
+  .meal-chip .m-tag{
+    font-size:10.5px; font-weight:800; color:#fff; padding:2px 7px; border-radius:8px; flex-shrink:0;
+  }
+  .meal-chip .m-name{ font-size:13.5px; font-weight:700; flex:1; }
+  .meal-chip .m-go{ font-size:12px; color:var(--accent); font-weight:700; flex-shrink:0; }
+
+  .note-box{
+    background:#FFF9E8; border:1px solid #F5E3A3; border-radius:14px; padding:12px 14px;
+    font-size:13px; color:#7a5b00; margin:16px 0 4px; line-height:1.55;
+  }
+
+  /* ---------- FOOD LIST ---------- */
+  .food-card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:15px 16px;
+    box-shadow:var(--shadow); margin-bottom:12px; position:relative;
+  }
+  .food-card .picked{
+    position:absolute; top:14px; right:14px; font-size:10.5px; font-weight:800; color:#fff;
+    background:var(--accent); padding:3px 8px; border-radius:8px;
+  }
+  .food-card .rank{ font-size:12px; font-weight:800; color:var(--text2); margin-bottom:3px; }
+  .food-card h4{ margin:0 0 5px; font-size:16.5px; font-weight:800; padding-right:70px; }
+  .food-card .rating{
+    display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:#3a3a3c;
+    background:#F2F2F7; padding:3px 9px; border-radius:8px; margin-bottom:9px;
+  }
+  .food-card .rating .star{ color:#FF9500; }
+  .food-card p.review{
+    margin:0 0 12px; font-size:14px; color:#3a3a3c; line-height:1.6;
+    padding-left:10px; border-left:3px solid var(--border);
+  }
+  .food-card a.go{
+    display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--accent);
+    text-decoration:none;
+  }
+
+  .subtab-row{ display:flex; gap:8px; margin-bottom:16px; background:#F2F2F7; border-radius:12px; padding:4px; }
+  .subtab-pill{
+    flex:1; padding:9px 10px; border-radius:9px; font-size:14px; font-weight:700;
+    background:none; border:none; color:var(--text2); cursor:pointer; font-family:inherit;
+  }
+  .subtab-pill.active{ background:#fff; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.12); }
+
+  .check-row{
+    display:flex; align-items:flex-start; gap:12px; padding:11px 2px; border-bottom:1px solid var(--border);
+    cursor:pointer;
+  }
+  .check-row:last-child{ border-bottom:none; }
+  .check-box{
+    width:22px; height:22px; border-radius:7px; border:2px solid #C7C7CC; flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center; transition:all .15s;
+  }
+  .check-box svg{ width:13px; height:13px; opacity:0; transition:opacity .15s; }
+  .check-row.done .check-box{ background:var(--accent); border-color:var(--accent); }
+  .check-row.done .check-box svg{ opacity:1; }
+  .check-text{ flex:1; }
+  .check-text .t{ font-size:15px; font-weight:700; }
+  .check-text .d{ font-size:13px; color:var(--text2); margin-top:2px; line-height:1.5; }
+  .check-row.done .check-text .t{ color:var(--text2); text-decoration:line-through; }
+
+  /* ---------- BOTTOM NAV ---------- */
+  .bottom-nav{
+    position:fixed; bottom:0; left:0; right:0; z-index:20;
+    background:rgba(255,255,255,0.92); backdrop-filter:saturate(180%) blur(14px);
+    border-top:1px solid var(--border);
+    display:flex; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; padding:6px 4px; cursor:pointer;
+    color:#9a9a9e; font-family:inherit; font-size:11.5px; font-weight:700;
+  }
+  .nav-btn.active{ color:var(--accent); }
+  .nav-btn svg{ width:23px; height:23px; }
+  .tab-pane{ display:none; }
+  .tab-pane.active{ display:block; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>발리 가족여행</h1>
+    <p class="sub">누사두아 힐튼 리조트 · 7.24 – 7.30</p>
+    <div class="stat-row">
+      <div class="stat"><div class="l">기간</div><div class="v">6박 7일</div></div>
+      <div class="stat"><div class="l">숙소</div><div class="v">힐튼 누사두아</div></div>
+      <div class="stat"><div class="l">인원</div><div class="v">총 7명</div></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- MAP TAB -->
+    <div class="tab-pane active" id="pane-map">
+      <div class="section-title">지도 <span class="tag">핀을 눌러보세요</span></div>
+      <div class="map-card">
+        <div id="leafletMap" style="width:100%; height:420px;"></div>
+        <div class="map-attrib">지도 데이터 © OpenStreetMap contributors — 실제 지형에 표시했어요.</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--c-stay)"></i>숙소</span>
+        <span><i style="background:var(--c-spot)"></i>관광지</span>
+        <span><i style="background:var(--c-food)"></i>식당</span>
+        <span><i style="background:var(--c-cafe)"></i>카페</span>
+        <span><i style="background:var(--c-shop)"></i>쇼핑</span>
+        <span><i style="background:var(--c-mart)"></i>마트</span>
+        <span><i style="background:var(--c-pharm)"></i>약국</span>
+        <span><i style="background:var(--c-spa)"></i>스파</span>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div class="tab-pane" id="pane-schedule">
+      <div class="section-title">일정 <span class="tag">7.24 – 7.30</span></div>
+      <div class="day-nav" id="dayNav"></div>
+      <div id="dayPanels"></div>
+    </div>
+
+    <!-- FOOD TAB -->
+    <div class="tab-pane" id="pane-food">
+      <div class="section-title">맛집 및 스파 <span class="tag">지역별</span></div>
+      <div class="day-nav" id="foodAreaNav"></div>
+      <div id="foodAreaPanels"></div>
+    </div>
+
+    <!-- CHECKLIST TAB -->
+    <div class="tab-pane" id="pane-checklist">
+      <div class="section-title">여행 전 체크리스트</div>
+
+      <div class="food-card">
+        <h4 style="margin-bottom:10px;">준비물 체크리스트</h4>
+        <div id="checklistItems"></div>
+      </div>
+
+      <div class="section-title" style="font-size:17px; margin-top:24px;">입국 서류 준비</div>
+      <div class="food-card">
+        <h4>올 인도네시아 도착카드 (All Indonesia)</h4>
+        <p class="review" style="border:none; padding-left:0;">
+          2025년 9월 1일부터 세관신고 + 건강신고(헬스패스)가 <b>올 인도네시아 도착카드</b> 하나로 통합됐고, 여기서 발리비자(e-VOA)까지 한 번에 신청·결제할 수 있어요.
+        </p>
+        <ul style="margin:0 0 14px; padding-left:18px; font-size:14px; color:#3a3a3c; line-height:1.7;">
+          <li><b>작성 시점</b>: 출국(입국) 3일 전부터 가능</li>
+          <li><b>준비물</b>: 여권, 호텔명, 항공편 정보, 결제 카드</li>
+          <li><b>동반 인원</b>: 대표자가 최대 10명까지 한 번에 작성 가능</li>
+          <li><b>언어 설정</b>: 한국어 번역에 오류가 많다는 후기가 많아 <b>영어</b>로 작성하는 걸 추천</li>
+          <li><b>도착비자(현지 구매 시)</b>: 약 50만 루피아 / USD 35 (카드 결제 시 수수료 1.95% 추가) — 온라인 사전 신청이 더 편함</li>
+        </ul>
+        <a class="go" href="https://allindonesia.imigrasi.go.id/" target="_blank">올 인도네시아 사이트 바로가기 ↗</a>
+      </div>
+
+      <div class="section-title" style="font-size:17px; margin-top:24px;">공항 이동 & 차량 대절</div>
+      <div class="food-card">
+        <h4>클룩(Klook) 공항 픽업 · 샌딩</h4>
+        <p class="review" style="border:none; padding-left:0;">
+          도착 직후 호객·환율 혼란 없이 미리 예약해두면 편해요. <b>픽업</b>은 공항 도착 후 숙소로, <b>샌딩</b>은 숙소에서 공항으로 갈 때 예약하는 거예요. 항공편 지연에도 무료 대기가 보장되는 상품이 많아서 밤 비행기로 도착할 때 특히 유용해요.
+        </p>
+        <ul style="margin:0 0 6px; padding-left:18px; font-size:14px; color:#3a3a3c; line-height:1.7;">
+          <li>예약 시 입력: 출발지(공항)/목적지(호텔명), 날짜·시간, 탑승 인원</li>
+          <li>기사님과는 보통 <b>WhatsApp</b>으로 연락하니 미리 설치해두면 좋아요</li>
+          <li>영유아 카시트가 필요하면 예약 시 추가 서비스로 신청 가능</li>
+        </ul>
+        <span style="font-size:13px;color:var(--text2);">클룩 앱/사이트에서 "발리 공항 픽업"으로 검색하면 바로 찾을 수 있어요.</span>
+      </div>
+
+      <div class="food-card">
+        <h4>로컬페이지 · 프라이빗 차량 대절</h4>
+        <div class="rating"><span class="star">★</span>4.98 · 리뷰 66개</div>
+        <p class="review" style="border:none; padding-left:0;">
+          하루 동안 기사님과 차량을 통째로 빌려서 원하는 곳만 골라 다니는 프라이빗 차량 전세 서비스예요. <b>한국어 기사</b>를 선택하면 운전뿐 아니라 투어 지역 가이딩까지 포함돼서, 남부투어처럼 여러 곳을 하루에 도는 날 특히 편할 것 같아요.
+        </p>
+        <ul style="margin:0 0 12px; padding-left:18px; font-size:14px; color:#3a3a3c; line-height:1.7;">
+          <li>포함: 운전기사, 차량, 유류비, 생수 / 미포함: 식사, 주차비, 톨비 (현금 루피아 준비 권장)</li>
+          <li>예약금 85,000원, 나머지는 현장 결제</li>
+          <li>영어 기사는 운전만, 한국어 기사는 가이딩까지 포함되는 점 참고</li>
+        </ul>
+        <a class="go" href="https://www.lokalpagetour.com/bali/private-car-charter" target="_blank">로컬페이지에서 보기 ↗</a>
+      </div>
+
+      <p class="note-box">입국 절차나 비자 관련 내용은 계속 바뀔 수 있어요. 출국 직전에 올 인도네시아 공식 사이트에서 최신 안내를 한 번 더 확인해주세요.</p>
+    </div>
+
+  </div>
+
+  <!-- Place detail bottom sheet -->
+  <div class="overlay" id="overlay" onclick="if(event.target===this) closeSheet();">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <span class="cat-badge" id="sheetCat">카테고리</span>
+      <h2 id="sheetName">장소명</h2>
+      <div class="drive" id="sheetDrive">숙소에서 차로 —</div>
+      <p id="sheetDesc">설명</p>
+      <div class="btn-row">
+        <a class="btn" id="sheetLink" href="#" target="_blank">구글맵에서 열기 ↗</a>
+        <button class="close" onclick="closeSheet()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-pane="pane-map" onclick="setTab('pane-map', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-3 8 3 7-3V3l-7 3-8-3-7 3z"/><path d="M8 3v16M16 6v16"/></svg>
+      지도
+    </button>
+    <button class="nav-btn" data-pane="pane-schedule" onclick="setTab('pane-schedule', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      일정
+    </button>
+    <button class="nav-btn" data-pane="pane-food" onclick="setTab('pane-food', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M6 2v9M9 2v9M15 2c-1.5 2-2 3.5-2 5.5 0 1.6.9 3 2 3.5V22"/></svg>
+      맛집·스파
+    </button>
+    <button class="nav-btn" data-pane="pane-checklist" onclick="setTab('pane-checklist', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      체크리스트
+    </button>
+  </div>
+
+<script>
+  function setTab(id, btn){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // ---------- Locations (실제 위경도) ----------
+  const catColors = {
+    '숙소':'#0071E3', '쇼핑':'#5E5CE6', '관광지':'#30B94D',
+    '식당':'#FF9500', '카페':'#A2845E', '마트':'#32ADE6',
+    '약국':'#FF3B30', '스파':'#BF5AF2'
+  };
+
+  const locations = [
+    {id:'resort', name:'힐튼 발리 리조트 (숙소)', lat:-8.7965, lng:115.2255, cat:'숙소',
+      drive:'기준 위치', desc:'우리 숙소. The Shore, Grain 등 리조트 내 레스토랑 다수, Mandara Spa 있음.',
+      link:'https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua'},
+    {id:'collection', name:'발리 컬렉션', lat:-8.7975, lng:115.2280, cat:'쇼핑',
+      drive:'숙소에서 차로 약 10~15분', desc:'소고 백화점(세일 품목 다수), 나이키·리바이스·지오다노, 대형마트, 기념품샵까지 한 번에.',
+      link:'https://www.google.com/maps/search/Bali+Collection+Nusa+Dua'},
+    {id:'kimiafarma', name:'Kimia Farma 약국 (누사두아)', lat:-8.7993, lng:115.2295, cat:'약국',
+      drive:'숙소에서 차로 약 5~10분', desc:'인도네시아 대표 약국 체인. 해열제·소화제 등 상비약, 자외선차단제 구비. 일부 지점 24시간 운영.',
+      link:'https://www.google.com/maps/search/Kimia+Farma+Nusa+Dua'},
+    {id:'pepito', name:'Pepito Market (시리기타)', lat:-8.8010, lng:115.2245, cat:'마트',
+      drive:'숙소에서 차로 약 5~10분', desc:'생수·간식·유아용품 사기 좋은 대형 마트. 관광지 이동 전후 들르기 좋아요.',
+      link:'https://www.google.com/maps/search/Pepito+Market+Siligita+Nusa+Dua'},
+    {id:'waterblow', name:'워터블로우', lat:-8.8040, lng:115.2310, cat:'관광지',
+      drive:'숙소에서 차로 약 10분', desc:'파도가 절벽에 부딪혀 솟구치는 명소. 전망대·산책로가 잘 되어 있어 유모차도 안전.',
+      link:'https://www.google.com/maps/search/Water+Blow+Nusa+Dua'},
+    {id:'gwk', name:'GWK 문화공원', lat:-8.8103, lng:115.1672, cat:'관광지',
+      drive:'숙소에서 차로 약 25~30분', desc:'거대한 가루다 위스누 켄카나 동상. 전체 포장도로 + 버기카 셔틀이라 아이·부모님 동반에 편함. 바롱 댄스 공연.',
+      link:'https://www.google.com/maps/search/GWK+Cultural+Park+Bali'},
+    {id:'jimbaran', name:'Pandan Sari Cafe (짐바란 해변)', lat:-8.7890, lng:115.1614, cat:'식당',
+      drive:'숙소에서 차로 약 30분', desc:'짐바란 해변 좌식 테이블 해산물 레스토랑. 선셋 맛집으로 평이 좋고 클룩(Klook) 예약 시 더 저렴하게 이용 가능. 저녁 예약 권장.',
+      link:'https://maps.app.goo.gl/EoHVC79uZjVa9Xsv9'},
+    {id:'uluwatu', name:'울루와뚜 사원', lat:-8.8290, lng:115.0850, cat:'관광지',
+      drive:'숙소에서 차로 약 40~50분', desc:'절벽 위 사원, 인도양 전망. 저녁엔 케착댄스 보러 오는 인파로 매우 혼잡, 낮 시간대 방문 추천. 사롱 무료 대여.',
+      link:'https://www.google.com/maps/search/Uluwatu+Temple+Bali'},
+    {id:'labaracca', name:'La Baracca Bali (울루와뚜)', lat:-8.8310, lng:115.0835, cat:'식당',
+      drive:'울루와뚜 사원 인근', desc:'정통 이탈리안 레스토랑. 피자·파스타 위주라 아이들도 호불호 없이 먹기 좋고, 분위기도 편안한 편.',
+      link:'https://goo.gl/maps/kV2EHBtxTfdaLQJ5A'},
+    {id:'sanur', name:'사누르 비치워크', lat:-8.7085, lng:115.2620, cat:'관광지',
+      drive:'숙소에서 차로 약 35~45분', desc:'파도가 잔잔하고 5km 평탄한 해변 산책로. 아이 손잡고 걷기 좋고, 신두비치 쪽은 한적한 편.',
+      link:'https://www.google.com/maps/search/Sanur+Beach+Bali'},
+    {id:'goory', name:'Goory Coffee & Eatery (사누르)', lat:-8.7040, lng:115.2650, cat:'카페',
+      drive:'사누르 해변 인근', desc:'사누르 비치 근처 쾌적하고 세련된 카페. 넓은 좌석에서 여유롭게 시간 보내기 좋음.',
+      link:'https://www.google.com/maps/search/Goory+Coffee+%26+Eatery+Sanur'},
+    {id:'isisspa', name:'Isis Spa (사누르)', lat:-8.7060, lng:115.2600, cat:'스파',
+      drive:'사누르 해변 인근', desc:'가족 단위 방문객에게 인지도 높은 스파. 연령 제한 없이 이용 가능, 다양한 마사지 패키지.',
+      link:'https://www.google.com/maps/search/Isis+Spa+Sanur+Bali'},
+  ];
+
+  // ---------- Leaflet 지도 초기화 ----------
+  const leafletMap = L.map('leafletMap', { scrollWheelZoom:true }).setView([-8.79, 115.17], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18,
+  }).addTo(leafletMap);
+
+  locations.forEach(loc=>{
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:16px; height:16px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+                          background:${catColors[loc.cat]}; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [16,16],
+      iconAnchor: [8,15],
+    });
+    const marker = L.marker([loc.lat, loc.lng], {icon}).addTo(leafletMap);
+    marker.on('click', ()=> openSheet(loc));
+  });
+
+  // 지도 타일 자체는 영문/현지어라, 주요 지역명은 한국어 라벨을 따로 얹었어요
+  const regionLabels = [
+    {name:'누사두아', lat:-8.7925, lng:115.2190},
+    {name:'짐바란',   lat:-8.7830, lng:115.1610},
+    {name:'울루와뚜 (Bukit)', lat:-8.8195, lng:115.0830},
+    {name:'GWK 지역', lat:-8.8035, lng:115.1700},
+    {name:'사누르',   lat:-8.7015, lng:115.2570},
+  ];
+  regionLabels.forEach(r=>{
+    const labelIcon = L.divIcon({
+      className: '',
+      html: `<div style="font-family:-apple-system,sans-serif; font-size:13px; font-weight:800; color:#1D1D1F;
+                          text-shadow:-1.5px 0 #fff,0 1.5px #fff,1.5px 0 #fff,0 -1.5px #fff, 0 0 4px #fff;
+                          white-space:nowrap; pointer-events:none;">${r.name}</div>`,
+      iconSize: [1,1],
+      iconAnchor: [-4,8],
+    });
+    L.marker([r.lat, r.lng], {icon:labelIcon, interactive:false, keyboard:false}).addTo(leafletMap);
+  });
+
+  function openSheet(loc){
+    document.getElementById('sheetCat').textContent = loc.cat;
+    document.getElementById('sheetCat').style.background = catColors[loc.cat];
+    document.getElementById('sheetName').textContent = loc.name;
+    document.getElementById('sheetDrive').textContent = loc.drive;
+    document.getElementById('sheetDesc').textContent = loc.desc;
+    document.getElementById('sheetLink').href = loc.link;
+    document.getElementById('overlay').classList.add('show');
+  }
+  function closeSheet(){ document.getElementById('overlay').classList.remove('show'); }
+
+  // ---------- Day data ----------
+  function meal(label, name, cat, link){
+    return {label, name, cat, link};
+  }
+
+  const days = [
+    {
+      date:"7월 24일 (금)", title:"이동 & 도착 · 리조트 체크인",
+      items:[
+        {time:"오전~오후", h:"인천 출발 → 발리 도착", p:"인천공항에서 덴파사르(DPS)행 항공편, 도착 후 누사두아까지 차량 이동 (약 30~40분)"},
+        {time:"저녁", h:"힐튼 발리 리조트 체크인", p:"장거리 이동 후 첫날은 짐 풀고 리조트 내에서 가볍게 정리.",
+          meals:[meal('저녁','The Shore (리조트 내)','식당','https://www.google.com/maps/search/The+Shore+Hilton+Bali+Resort')]},
+      ]
+    },
+    {
+      date:"7월 25일 (토)", title:"리조트 근방 & 쇼핑",
+      items:[
+        {time:"오전", h:"리조트에서 여유", p:"3개 야외 수영장·정글 키즈클럽 이용, 부모님은 조식 후 해변 산책."},
+        {time:"점심~오후", h:"발리 컬렉션 쇼핑", p:"차로 15분 내외. 소고 백화점 세일 품목, 나이키·리바이스, 대형마트·기념품샵까지 한 번에.",
+          meals:[meal('점심','Lion X (호텔 내 중식당)','식당','https://www.google.com/maps/search/Lion+X+Nusa+Dua+Bali')]},
+        {time:"저녁", h:"리조트 내 디너 & 공연", p:"발리 전통 무용 공연을 곁들인 저녁 (사전 예약 확인 필요)",
+          meals:[meal('저녁','Mr Bob Bar & Grill (누사두아)','식당','https://www.google.com/maps/search/Mr+Bob+Bar+and+Grill+Nusa+Dua')]},
+      ]
+    },
+    {
+      date:"7월 26일 (일)", title:"GWK 문화공원 & 짐바란",
+      items:[
+        {time:"오전", h:"리조트에서 여유", p:"이동 없이 수영장·해변에서 컨디션 조절. 아이들 낮잠까지 재우고 나오면 오후 동선이 훨씬 편해요.",
+          meals:[meal('점심','리조트 내 Grain','식당','https://www.google.com/maps/search/Grain+Hilton+Bali+Resort')]},
+        {time:"오후", h:"GWK 문화공원", p:"점심 먹고 출발, 차로 약 25~30분. 전체 포장도로 + 버기카 셔틀이라 유모차·부모님 동반에 편함. 바롱 댄스 공연도 관람 가능."},
+        {time:"저녁", h:"짐바란 해변으로 이동 · 해산물", p:"GWK에서 짐바란까지 차로 약 15분 — 리조트로 돌아왔다가 다시 나가지 않고 바로 이동해서 동선 낭비 없앴어요. 백사장 좌식 테이블에서 노을 보며 저녁.",
+          meals:[meal('저녁','Pandan Sari Cafe (짐바란)','식당','https://maps.app.goo.gl/EoHVC79uZjVa9Xsv9')]},
+      ]
+    },
+    {
+      date:"7월 27일 (월)", title:"다같이 울루와뚜",
+      note:"💡 남부투어(차량+기사 대절로 울루와뚜·GWK·짐바란 등을 한 번에 도는 패키지) 고려 중이시라면, 정해지시면 이 날 일정을 그 투어 동선에 맞춰 다시 짜드릴게요. 예를 들어 남부투어를 이용하면 26일(GWK+짐바란)과 27일(울루와뚜)을 하루로 합칠 수도 있어요.",
+      items:[
+        {time:"오전", h:"리조트에서 여유", p:"오전엔 이동 없이 조식·수영 등으로 컨디션 조절, 늦지 않게 출발 준비"},
+        {time:"점심~오후", h:"울루와뚜 사원", p:"차로 약 40~50분. 저녁엔 케착댄스·일몰 인파로 매우 혼잡해지니 낮 시간대 방문 추천. 절벽 근처는 아이 손 꼭 잡고 이동.",
+          meals:[meal('점심','La Baracca Bali (이탈리안)','식당','https://goo.gl/maps/kV2EHBtxTfdaLQJ5A')]},
+        {time:"오후 늦게", h:"리조트로 복귀", p:"저녁 붐비는 시간 전에 출발해서 복귀",
+          meals:[meal('저녁','The Breeze (리조트 내)','식당','https://www.google.com/maps/search/The+Breeze+Hilton+Bali+Resort')]},
+      ]
+    },
+    {
+      date:"7월 28일 (화)", title:"사누르에서 다같이",
+      items:[
+        {time:"오전~오후", h:"사누르 비치워크", p:"5km 평탄한 해변 산책로라 아이 손잡고 걷기 편하고, 신두비치 쪽은 한적한 편. 원하는 사람은 스파 예약, 아이들은 백사장에서 모래놀이.",
+          meals:[
+            meal('점심','Goory Coffee & Eatery (사누르)','카페','https://www.google.com/maps/search/Goory+Coffee+%26+Eatery+Sanur'),
+            meal('스파','Isis Spa (사누르)','스파','https://www.google.com/maps/search/Isis+Spa+Sanur+Bali'),
+          ]},
+        {time:"오후", h:"자유 시간 · 리조트 복귀", p:"오후 늦게 리조트로 복귀해서 저녁 편하게",
+          meals:[meal('저녁','리조트 내 자유식','식당','https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua')]},
+      ]
+    },
+    {
+      date:"7월 29일 (수)", title:"여유 & 마사지 · 마무리",
+      items:[
+        {time:"오전", h:"리조트 수영장 & 해변", p:"짐 정리 전 마지막 여유. 아이들 키즈클럽, 어른들은 조식 후 비치 체어에서 휴식",
+          meals:[meal('점심','리조트 내 자유식','식당','https://www.google.com/maps/search/Hilton+Bali+Resort+Nusa+Dua')]},
+        {time:"오후", h:"마사지 타임", p:"리조트 내 Mandara Spa에서 가족끼리 나란히 마사지 예약 추천"},
+        {time:"저녁", h:"마지막 가족 디너", p:"일주일 여행 마무리하는 저녁 식사, 짐 싸기",
+          meals:[meal('저녁','The Shore (리조트 내)','식당','https://www.google.com/maps/search/The+Shore+Hilton+Bali+Resort')]},
+      ]
+    },
+    {date:"7월 30일 (목)", title:"귀국", items:[
+      {time:"오전~오후", h:"체크아웃 & 공항 이동", p:"덴파사르 공항으로 이동 후 인천행 항공편 탑승"},
+    ]},
+  ];
+
+  const dayNav = document.getElementById('dayNav');
+  const dayPanels = document.getElementById('dayPanels');
+  const mealTagColor = {'식당':'var(--c-food)','카페':'var(--c-cafe)','스파':'var(--c-spa)'};
+
+  days.forEach((d, i)=>{
+    const pill = document.createElement('button');
+    pill.className = 'day-pill' + (i===0 ? ' active' : '');
+    pill.textContent = 'Day ' + (i+1);
+    pill.onclick = ()=>{
+      document.querySelectorAll('.day-pill').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+      document.querySelectorAll('.day-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('day-panel-'+i).classList.add('active');
+    };
+    dayNav.appendChild(pill);
+
+    const panel = document.createElement('div');
+    panel.className = 'day-panel' + (i===0 ? ' active' : '');
+    panel.id = 'day-panel-'+i;
+
+    if(d.items){
+      let html = '<div class="timeline">';
+      d.items.forEach(it=>{
+        let mealsHtml = '';
+        if(it.meals && it.meals.length){
+          mealsHtml = '<div class="meal-row">' + it.meals.map(m=>`
+            <a class="meal-chip" href="${m.link}" target="_blank">
+              <span class="m-tag" style="background:${mealTagColor[m.cat]||'var(--c-food)'}">${m.label}</span>
+              <span class="m-name">${m.name}</span>
+              <span class="m-go">지도 ↗</span>
+            </a>`).join('') + '</div>';
+        }
+        html += `
+          <div class="t-item">
+            <div class="t-time">${it.time}</div>
+            <div class="t-card">
+              <h4>${it.h}</h4>
+              <p>${it.p}</p>
+              ${mealsHtml}
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+      const splitBadge = d.split ? '<span class="split-badge">가족이 나뉘는 날</span>' : '';
+      const noteHtml = d.note ? `<div class="note-box">${d.note}</div>` : '';
+      panel.innerHTML = `<div class="day-head"><div class="date">${d.date}</div><h3>${d.title}${splitBadge}</h3></div>${html}${noteHtml}`;
+    }
+    dayPanels.appendChild(panel);
+  });
+
+  // ---------- Food lists (사용자가 보내준 리스트, 원문 리뷰 포함) ----------
+  // pickedIds: 이미 일정에 포함된 곳 표시용
+  const pickedIds = new Set(['La Baracca Bali', 'Pandan Sari Cafe']);
+
+  const foodAreas = [
+    {
+      area:"누사두아", key:"nusadua",
+      list:[
+        {name:"NUSA (Nusa Dua)", rating:null, reviews:null, review:"누사두아 내 카페 겸 레스토랑.", link:"https://www.google.com/maps/place/NUSA+Nusa+Dua/@-8.8017057,115.2293099,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd2430f1eadeec1:0xed34ff5ebc2231c1!8m2!3d-8.8017057!4d115.2293099!16s%2Fg%2F11tf8172vm"},
+        {name:"Kekeb Restaurant, Balinese Food (Nusa Dua)", rating:null, reviews:null, review:"발리 전통 음식 전문점.", link:"https://www.google.com/maps/place/Kekeb+Restaurant,+Balinese+Food+Nusa+Dua/@-8.8015046,115.2356597,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd2435e9e844081:0x309cc7e64dd964bf!8m2!3d-8.8015046!4d115.2356597!16s%2Fg%2F11g3ylc75r"},
+        {name:"Coco Bistro (Tanjung Benoa)", rating:null, reviews:null, review:"딴중 베노아 지역의 비스트로.", link:"https://www.google.com/maps/place/Coco+Bistro+Tanjung+Benoa/@-8.7723546,115.2223273,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd2430847de3b93:0x82c2c11aaf20d403!8m2!3d-8.7723546!4d115.2223273!16s%2Fg%2F1hm5ypmfg"},
+        {name:"Nusa Dua Pizza", rating:null, reviews:null, review:"누사두아 피자 전문점.", link:"https://www.google.com/maps/place/Nusa+Dua+Pizza/@-8.7963799,115.219505,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd2441640000001:0xc1d27aa8712ab29a!8m2!3d-8.7963799!4d115.219505!16s%2Fg%2F1td560_h"},
+      ],
+      spas:[
+        {name:"Zen Family Spa & Reflexology (Bali)", review:"클룩(Klook)에서 예약 가능한 누사두아 패밀리 스파 & 리플렉솔로지 상품.", link:"https://www.klook.com/ko/activity/84154-zen-family-spa-reflexology-bali/?aid=88374&aff_adid=1039130&spm=SearchResult.SearchResult_LIST&clickId=5005c82a12&aff_pid=&aff_sid=&utm_medium=affiliate-alwayson&utm_source=non-network&utm_campaign=88374&utm_term=&utm_content=&aff_klick_id=134676956387-88374-1039130-6dd23d2"},
+        {name:"NUSA Bali Spa (Nusa Dua)", review:"클룩(Klook)에서 예약 가능한 누사두아 스파 상품.", link:"https://www.klook.com/ko/activity/90593-nusa-bali-spa-nusa-dua-bali/?aid=88374&aff_adid=1039132&spm=SearchResult.SearchResult_LIST&clickId=9c2974254a&aff_pid=&aff_sid=&utm_medium=affiliate-alwayson&utm_source=non-network&utm_campaign=88374&utm_term=&utm_content=&aff_klick_id=134676956799-88374-1039132-1e640ba"},
+        {name:"Royal Orchid Spa Bali - Spa Experience", review:"클룩(Klook)에서 예약 가능한 스파 익스피리언스 상품.", link:"https://www.klook.com/ko/activity/46807-spa-experience-royal-orchid-spa-bali-bali/?aid=88374&aff_adid=1039131&spm=SearchResult.SearchResult_LIST&clickId=67bc83d27f&aff_pid=&aff_sid=&utm_medium=affiliate-alwayson&utm_source=non-network&utm_campaign=88374&utm_term=&utm_content=&aff_klick_id=134676957197-88374-1039131-fa50975"},
+      ]
+    },
+    {
+      area:"울루와뚜", key:"uluwatu",
+      list:[
+        {name:"Single Fin Bali", rating:"4.5", reviews:"9,096", review:"절벽을 따라 놓인 테라스와 DJ가 있는 세련된 레스토랑. 음식맛 보다는 분위기와 절경을 즐기러 가는 곳. 가격대는 조금 높은 편이지만 가치가 있는 뷰 맛집.", link:"https://goo.gl/maps/5nYCjcuahYuXKAS88"},
+        {name:"Mana Uluwatu Restaurant & Bar", rating:"4.5", reviews:"2,040", review:"선셋을 온전히 즐기기 위해 찾기 좋은 bar. 분위기와 뷰가 멋지며 나초와 타코 등 음식맛도 준수한 편.", link:"https://goo.gl/maps/JWgGMtb2wHgci4S79"},
+        {name:"La Baracca Bali (Uluwatu)", rating:"4.5", reviews:"1,841", review:"정통 이탈리아 음식 레스토랑. 발리 음식이 물린다면 호불호없이 찾을만한 울루와뚜 맛집. 분위기도 좋은 편.", link:"https://goo.gl/maps/kV2EHBtxTfdaLQJ5A"},
+        {name:"Suka Espresso [Uluwatu]", rating:"4.8", reviews:"6,114", review:"카페 겸 간단한 브런치류(햄버거, 케밥, 토스트)를 맛볼 수 있는 곳. 가성비가 좋고, 커피와 음식 맛이 모두 훌륭함.", link:"https://goo.gl/maps/oxMwzy9G2brvQj64A"},
+        {name:"Gooseberry Restaurant", rating:"4.9", reviews:"7,489", review:"서양식 메뉴를 제공하는 레스토랑. 멋진 분위기와 수준있는 식사를 접할 수 있는 곳. 가격대는 높은 편이지만 만족도도 역시 높음.", link:"https://goo.gl/maps/U5G78Y1katefxLuTA"},
+        {name:"Rolling Fork Padang Padang", rating:"4.5", reviews:"1,724", review:"가격대는 좀 있는 편이지만 이탈리안 요리들을 맛있게 먹을 수 있는 곳으로 평이 좋은 편.", link:"https://goo.gl/maps/DuSPKRVeqqLWTRtf6"},
+        {name:"iiga Warung", rating:"4.1", reviews:"2,449", review:"바베큐 립 전문 인도네시아 식당. 립 뿐만 아니라 토마호크, 미고랭, 나시고랭 등 모두 맛있고 가성비가 좋은 울루와뚜 맛집.", link:"https://goo.gl/maps/nG2esHVUZ4uhWzRH8"},
+        {name:"El Merkat Bali", rating:"4.5", reviews:"1,199", review:"서양음식 전문점으로 다양한 메뉴를 맛있게 즐길 수 있는 곳.", link:"https://goo.gl/maps/oBCHuLpYi7WLWiNm6"},
+        {name:"Balique", rating:"4.4", reviews:"726", review:"인도네시아 음식 레스토랑. 가격대는 좀 있는 편이지만 분위기도 좋고 전반적으로 음식이 맛있음.", link:"https://goo.gl/maps/2N2iVumU5NGfFB8a7"},
+        {name:"Artisan - Uluwatu", rating:"4.8", reviews:"1,853", review:"브런치와 카페를 즐기기 좋은 울루와뚜 카페 겸 맛집. 2층 자리 분위기가 좋음.", link:"https://maps.app.goo.gl/dGEA2Yrb1iMfxs6r8"},
+      ]
+    },
+    {
+      area:"짐바란", key:"jimbaran",
+      list:[
+        {name:"Rock Bar", rating:"4.5", reviews:"6,029", review:"아야나에서 운영하는 짐바란에서 가장 유명한 BAR이자 레스토랑. 분위기와 전망, 사진스폿으로 더 유명한 곳.", link:"https://goo.gl/maps/oRFfdTJFtftPhCLA9"},
+        {name:"Cuca Restaurant", rating:"4.7", reviews:"2,649", review:"짐바란의 타파스 전문 레스토랑. 맛에 대한 만족도가 높고 분위기까지 좋음. 한국어 메뉴판이 있어서 주문이 쉬움. 예약 필수.", link:"https://goo.gl/maps/SCvAcRFoiFaFuFQ59"},
+        {name:"WAHAHA Pork Ribs - Jimbaran", rating:"4.5", reviews:"1,269", review:"립이 메인으로 나오는 발리요리 전문점. 아야나 짐바란과 가까운 곳에 위치하고 호불호없이 전반적인 맛 평가가 좋은 곳.", link:"https://goo.gl/maps/Pr5Q1VjdpZxTqgsA9"},
+        {name:"Pandan Sari Cafe (Jimbaran)", rating:"4.6", reviews:"617", review:"짐바란 해변에서 선셋을 즐기면서 해산물을 즐길 수 있는 레스토랑. 클룩(Klook)을 통해 좀 더 저렴하게 예약해서 즐길 수 있음. 선셋 해산물 식당 중 평이 가장 좋은 편.", link:"https://maps.app.goo.gl/EoHVC79uZjVa9Xsv9"},
+        {name:"Teba Cafe Jimbaran Official", rating:"4.4", reviews:"1,766", review:"짐바란 선셋 씨푸드 레스토랑 중 하나로 친절하고 맛있어서 평이 좋은 곳.", link:"https://goo.gl/maps/fMHEJLP3SxqGyhaS9"},
+        {name:"La Brasserie by Melting Wok", rating:"4.8", reviews:"1,113", review:"르 메르디앙 호텔 앞에 위치. 정통 프랑스요리를 즐길 수 있는 레스토랑으로 분위기도 좋고 평이 좋은 식당.", link:"https://maps.app.goo.gl/KmHH9D5gvJobKNRA8"},
+        {name:"Bendino Cafe & Bistro", rating:"4.6", reviews:"458", review:"가격도 합리적이고 한국인 입맛에 잘 맞는 스테이크 맛집.", link:"https://maps.app.goo.gl/PVFyGv43dHvWAhW47"},
+        {name:"Kayumanis Resto Jimbaran", rating:"4.7", reviews:"769", review:"아름다운 개인 빌라 내부에 있는 식당. 멋진 분위기에서 즐길 수 있는 인도네시아 요리 전문 레스토랑. 쿠킹클래스도 운영, 가격대가 좀 높은 편. 예약 필요.", link:null},
+        {name:"koffietons", rating:"4.9", reviews:"4,444", review:"나무로 뒤덮인 분위기의 카페. 가벼운 브런치부터 와플 등 디저트와 카페도 즐길 수 있음. 대체로 모든 메뉴 평이 좋은 편.", link:"https://maps.app.goo.gl/cGt2eHwFvWfPym329"},
+        {name:"AKUA de Bilbao", rating:"4.6", reviews:"546", review:"스페인 음식점으로 멋진 비치 앞에 있어서 분위기도 좋고, 타파스와 샹그리아가 맛있는 곳.", link:"https://goo.gl/maps/e6tgZ1gUrmh39Dry9"},
+        {name:"와룽 깜퐁", rating:"4.5", reviews:"2,920", review:"해산물 및 발리요리 전문점으로 인테리어 및 분위기가 좋으며, 발리 음식이 입에 안맞는 사람에게도 호불호가 없는 맛집. 예약 추천.", link:"https://goo.gl/maps/q6Up7DT1qrF4nSjDA"},
+        {name:"Mapo Galmaegi Magal Jimbaran", rating:"4.5", reviews:"275", review:"아야나 리조트 근처 한식당. 구워먹는 고기와 냉면, 기타 한식들 모두 평이 좋은 편으로 한식이 땡긴다면 추천.", link:"https://goo.gl/maps/dtdJQhNAdtibLxYG7"},
+        {name:"Sundara", rating:"4.6", reviews:"933", review:"포시즌스 발리 내 레스토랑. 단연 분위기와 음식 퀄리티가 높음. 단 가격대도 높은 편.", link:"https://goo.gl/maps/kAQYiizuWnsFoPYP6"},
+        {name:"ASAI Cafe", rating:"4.7", reviews:"835", review:"분위기 좋고 맛있는 브런치를 즐기기 좋은 곳.", link:"https://maps.app.goo.gl/avjBoQYCb87yG7Wx9"},
+        {name:"70 Fahrenheit Koffie CAFE - Jimbaran", rating:"4.6", reviews:"1,240", review:"규모가 꽤 큰 카페로 맛있는 브런치와 커피 및 디저트를 즐기기 좋은 곳.", link:"https://maps.app.goo.gl/uf9JivAYKBSTvSsWA"},
+      ]
+    },
+    {
+      area:"사누르", key:"sanur",
+      list:[
+        {name:"Naughty Nuri's Warung (Sanur)", rating:"4.8", reviews:"3,347", review:"너티 누리스 와룽 체인이 사누르에도 있어요. 괜찮은 폭립과 꼬치구이를 접하고 싶으시다면 추천.", link:"https://maps.app.goo.gl/rKtdberyi4dKtTLs5"},
+        {name:"Fisherman's Club", rating:"4.5", reviews:"668", review:"안다즈 발리 레스토랑 중 한 곳. 씨푸드를 거하게 먹고 싶다면 추천 — 원하는 해산물을 골라 원하는 조리법으로 만들어주는 곳.", link:"https://maps.app.goo.gl/YmvcZ5DnWWctMHZS6"},
+        {name:"Soul on the Beach", rating:"4.6", reviews:"2,894", review:"피자, 파스타 등 인터내셔널 메뉴가 땡길 때 추천. 바다 앞에 위치해 전망과 분위기가 좋음.", link:"https://maps.app.goo.gl/LJy8GoECES6Wa3xG7"},
+        {name:"Warung Kecil", rating:"4.6", reviews:"1,338", review:"사누르 나시짬뿌르 맛집. 원하는 메뉴만 접시에 담아 먹는 방식, 미친 가성비. 한국인 입맛에도 잘 맞아 로컬 식당 중 인기 많음.", link:"https://maps.app.goo.gl/j9B4XX4xJznt2S2d7"},
+        {name:"Tree Bar at Maya Sanur", rating:"4.8", reviews:"1,245", review:"마야 사누르 리조트 해변에 위치한 레스토랑. 나시고랭이 맛있다는 평이 많고, 밤에 가서 한잔하기도 좋은 분위기.", link:"https://maps.app.goo.gl/du8DmXLArAoTQsBP7"},
+        {name:"Brasserie Republique", rating:"4.7", reviews:"682", review:"인도네시아 음식이 물릴 때 프랑스 음식 어때요? 양파스프와 바게트, 스테이크 등을 즐길 수 있음.", link:"https://maps.app.goo.gl/G5WqKvw3MZ2LF6Ex6"},
+        {name:"Massimo Italian Restaurant", rating:"4.6", reviews:"14,844", review:"리뷰 만 개가 넘는 사누르 맛집. 파스타·피자 다 준수하게 맛있고, 특히 젤라또는 줄서서 먹는 명물 (더위에 금방 녹는 게 단점).", link:"https://maps.app.goo.gl/d2SjH1PUmkLdGLVKA"},
+        {name:"Warung Mak Beng", rating:"4.6", reviews:"20,163", review:"사누르에서 리뷰가 가장 많은 맛집. 해산물 전문점으로 밥+생선구이+생선 스튜 단일 메뉴만 판매. 현금만 받는 점 참고.", link:"https://maps.app.goo.gl/dDpx4vrhJqdKhkim9"},
+        {name:"Sala Bistro & Coffee", rating:"4.6", reviews:"1,106", review:"브런치와 카페를 즐길 수 있는 멋진 인테리어. 아침 식사에도, 브런치에도 좋음.", link:"https://maps.app.goo.gl/iwAymiVEdfYo1cks8"},
+        {name:"Canvas Cafe", rating:"4.8", reviews:"891", review:"스무디볼, 샌드위치 등 하나하나 다 맛있는 카페. 와이파이 빠르고 에어컨도 시원해 시간 보내기 좋음.", link:"https://maps.app.goo.gl/qjbbDPHrgBTRbKpw5"},
+        {name:"Over the Moon Cafe", rating:"4.7", reviews:"991", review:"에어컨 빵빵한 사누르 카페. 카페 메뉴 뿐 아니라 일반 식사도 취급 — 스무디, 커피, 에그베네딕트, 샌드위치 추천.", link:"https://maps.app.goo.gl/mf1oTuh7uqQEdHNGA"},
+        {name:"Stuja di Pantai", rating:"4.5", reviews:"3,603", review:"해변가에 있는 분위기 좋은 카페. 비치클럽 같은 느낌이라 사진 찍기 좋고 쉬다 가기 좋음.", link:"https://maps.app.goo.gl/vp86xB9S8gQNaNvv6"},
+        {name:"Starbucks Griya Santrian Sanur", rating:null, reviews:null, review:"사누르에도 스타벅스가 있어요. 에어컨 빵빵한 공간에서 익숙한 커피 맛을 원한다면 추천.", link:"https://maps.app.goo.gl/WGmnQGdoGS1mBFF59"},
+      ],
+      spas:[
+        {name:"Spa at Maya Sanur", review:"마야 사누르 리조트 내 스파. 평점·후기 좋은 편으로 알려져 있으나 정확한 수치는 방문 전 구글맵에서 다시 확인해주세요.", link:"https://www.google.com/maps/search/Spa+at+Maya+Sanur"},
+        {name:"UR Spa Sanur", review:"사누르 내 스파. 세부 평점은 검색으로 확인하지 못해 구글맵에서 최신 리뷰 확인 후 예약을 추천드려요.", link:"https://www.google.com/maps/search/UR+Spa+Sanur"},
+        {name:"The Nest Beachside Spa", review:"해변가에 위치한 저렴한 가격대 스파. 마사지나 매니큐어·페디큐어 중 선택 가능.", link:"https://www.google.com/maps/search/The+Nest+Beachside+Spa+Sanur"},
+        {name:"사누르 스바하 스파 (Svaha Spa)", review:"사누르 내 스파. 세부 평점은 검색으로 확인하지 못해 구글맵에서 최신 리뷰 확인 후 예약을 추천드려요.", link:"https://www.google.com/maps/search/Svaha+Spa+Sanur"},
+      ]
+    },
+  ];
+
+  const foodAreaNav = document.getElementById('foodAreaNav');
+  const foodAreaPanels = document.getElementById('foodAreaPanels');
+
+  foodAreas.forEach((area, i)=>{
+    const pill = document.createElement('button');
+    pill.className = 'food-pill' + (i===0 ? ' active' : '');
+    pill.textContent = area.area;
+    pill.onclick = ()=>{
+      document.querySelectorAll('.food-pill').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+      document.querySelectorAll('.food-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('food-panel-'+i).classList.add('active');
+    };
+    foodAreaNav.appendChild(pill);
+
+    const panel = document.createElement('div');
+    panel.className = 'food-panel' + (i===0 ? ' active' : '');
+    panel.id = 'food-panel-'+i;
+
+    function renderFoodCards(list){
+      let out = '';
+      list.forEach((f, idx)=>{
+        const isPicked = pickedIds.has(f.name.replace(' (Uluwatu)','').replace(' (Jimbaran)','').replace(' (Sanur)','').replace(' (Nusa Dua)',''));
+        const ratingHtml = f.rating
+          ? `<div class="rating"><span class="star">★</span>${f.rating} · 리뷰 ${f.reviews}개</div>`
+          : `<div class="rating" style="opacity:.7;">평점 정보 없음</div>`;
+        out += `
+          <div class="food-card">
+            ${isPicked ? '<span class="picked">일정에 포함</span>' : ''}
+            <div class="rank">${idx+1}</div>
+            <h4>${f.name}</h4>
+            ${ratingHtml}
+            <p class="review">${f.review}</p>
+            ${f.link ? `<a class="go" href="${f.link}" target="_blank">구글맵에서 열기 ↗</a>` : '<span style="font-size:13px;color:var(--text2);">지도 링크 미확인</span>'}
+          </div>`;
+      });
+      return out;
+    }
+    function renderSpaCards(list){
+      let out = '';
+      list.forEach(s=>{
+        out += `
+          <div class="food-card">
+            <h4>${s.name}</h4>
+            <p class="review">${s.review}</p>
+            <a class="go" href="${s.link}" target="_blank">${s.link.includes('klook.com') ? 'Klook에서 예약 ↗' : '구글맵에서 열기 ↗'}</a>
+          </div>`;
+      });
+      return out;
+    }
+
+    if(area.spas && area.spas.length){
+      // 맛집/스파 서브탭이 있는 지역
+      panel.innerHTML = `
+        <div class="subtab-row">
+          <button class="subtab-pill active" data-sub="foods">맛집</button>
+          <button class="subtab-pill" data-sub="spas">스파</button>
+        </div>
+        <div class="subtab-content" data-content="foods">${renderFoodCards(area.list)}</div>
+        <div class="subtab-content" data-content="spas" style="display:none;">${renderSpaCards(area.spas)}</div>
+      `;
+      panel.querySelectorAll('.subtab-pill').forEach(btn=>{
+        btn.onclick = ()=>{
+          panel.querySelectorAll('.subtab-pill').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          const target = btn.getAttribute('data-sub');
+          panel.querySelectorAll('.subtab-content').forEach(c=>{
+            c.style.display = (c.getAttribute('data-content') === target) ? '' : 'none';
+          });
+        };
+      });
+    } else {
+      // 스파 정보 없는 지역은 맛집만
+      panel.innerHTML = renderFoodCards(area.list);
+    }
+
+    foodAreaPanels.appendChild(panel);
+  });
+
+  // ---------- 체크리스트 ----------
+  const checklist = [
+    {t:'올 인도네시아 (출국 3일 전)', d:'세관신고+헬스패스 통합 신고, 발리비자(e-VOA)까지 한 번에 신청·결제. 출국 3일 전부터 작성 가능.'},
+    {t:'로밍 / 유심', d:'현지 데이터 사용 방법 미리 준비'},
+    {t:'여행자 보험', d:''},
+    {t:'환전', d:''},
+    {t:'트래블카드', d:'해외 결제·인출용 카드'},
+    {t:'발리벨리 대비 준비물', d:'비상약, 필터 샤워기, 휴대용 포트, 보온병'},
+    {t:'USD 100달러권', d:'현지 환전 시 환율이 가장 좋은 편'},
+    {t:'WhatsApp 설치', d:'레스토랑·스파 예약, 기사님 연락용'},
+    {t:'Grab 설치', d:'택시 호출용'},
+  ];
+  const checklistWrap = document.getElementById('checklistItems');
+  checklist.forEach((item, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'check-row';
+    row.id = 'check-'+idx;
+    row.innerHTML = `
+      <div class="check-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="check-text">
+        <div class="t">${item.t}</div>
+        ${item.d ? `<div class="d">${item.d}</div>` : ''}
+      </div>`;
+    row.onclick = ()=> row.classList.toggle('done');
+    checklistWrap.appendChild(row);
+  });
+</script>
+
+</body>
+</html>
